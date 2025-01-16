@@ -15,20 +15,31 @@ async def translateText(text):
         
     return translatedWord, wordDefinition, similarWords
 
-text = input()
-translatedWord, wordDefinition, similarWords = asyncio.run(translateText(text))
-
-seenWords[translatedWord] = {"word": translatedWord, "def": wordDefinition, "similar": similarWords}
-print(seenWords[translatedWord])
-
 class App(ctk.CTk):
     def __init__(self):
-        super().__init__(fg_color="#000000")
+        super().__init__(fg_color="#0B192C")
         self.title("Lingo Vocabulary") #CHANGE NAME
-        self.geometry("600x400")
+        self.geometry("1200x600")
+        self.minsize(800, 400)
         self.after(0, lambda:self.state("zoomed"))
+
+        self.columnconfigure(0, weight=1, uniform="a")
+        self.rowconfigure(0, weight=1, uniform="a")
+        self.rowconfigure(1, weight=5, uniform="a")
+
+        vocabularyWordFrame(self)
 
         self.mainloop()
 
-if __name__ == "__main__":   
-    App()
+    def getWord(word):
+        text = input()
+        translatedWord, wordDefinition, similarWords = asyncio.run(translateText(text))
+
+        seenWords[translatedWord] = {"word": translatedWord, "def": wordDefinition, "similar": similarWords}
+
+class vocabularyWordFrame(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent, fg_color="#1E3E62", corner_radius=30)
+        self.grid(row=1, column=0, sticky="nsew", padx=120, pady=30)
+
+App()
