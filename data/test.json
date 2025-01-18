@@ -1,10 +1,1 @@
-{
-    "name": "test",
-    "languageLearning": "es",
-    "difficulty": "easy",
-    "score": 0,
-    "position": 1,
-    "seenWords": {},
-    "learnedWords": {},
-    "masteredWords": {}
-}
+{"name": "test", "languageLearning": "es", "difficulty": "easy", "score": 0, "position": 1, "seenWords": [], "learnedWords": [], "masteredWords": []}

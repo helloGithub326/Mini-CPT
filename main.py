@@ -41,9 +41,8 @@ def loadData(username):
     learnedWords = data["learnedWords"]
     masteredWords = data["masteredWords"]
 
-    print(languageLearning, difficulty, score, position, seenWords, learnedWords, masteredWords)
-
-def saveData(username, language, create):
+def saveData(filename, newLanguage="", newDifficulty="", newScore=0, newPosition=0, newSeenWords=[], newLearnedWords=[], newMasteredWords=[], create=False):
+    global username
     global languageLearning
     global difficulty
     global score
@@ -53,7 +52,7 @@ def saveData(username, language, create):
     global masteredWords
     
     if create:
-        languageLearning = language
+        languageLearning = newLanguage
         difficulty = "easy"
         score = 0
         position = 0
@@ -61,19 +60,68 @@ def saveData(username, language, create):
         learnedWords = []
         masteredWords = []
 
+    data = json.load(open(f"data/{filename.lower()}.json"))        
+
     newData = {
-        "name": username,
-        "languageLearning": languageLearning,
-        "difficulty": difficulty,
-        "score": score,
-        "position": position,
-        "seenWords": seenWords,
-        "learnedWords": learnedWords,
-        "masteredWords": masteredWords
+        "name": filename,
+        "languageLearning": data["languageLearning"],
+        "difficulty": data["difficulty"],
+        "score": data["score"],
+        "position": data["position"],
+        "seenWords": data["seenWords"],
+        "learnedWords": data["learnedWords"],
+        "masteredWords": data["masteredWords"]
     }
 
-    with open(f"data/{username.lower()}.json", "w") as file:
+    if newDifficulty != "":
+        newData["difficulty"] = newDifficulty
+    if newScore != 0:
+        newData["score"] = newScore
+    if newPosition != 0:
+        newData["position"] = newPosition
+    if newSeenWords != []:
+        newData["seenWords"] = newSeenWords
+    if newLearnedWords != []:
+        newData["learnedWords"] = newLearnedWords
+    if newMasteredWords != []:
+        newData["masteredWords"] = newMasteredWords
+
+    if filename == username:
+        languageLearning = newData["languageLearning"]
+        difficulty = newData["difficulty"]
+        score = newData["score"]
+        position = newData["position"]
+        seenWords = newData["seenWords"]
+        learnedWords = newData["learnedWords"]
+        masteredWords = newData["masteredWords"]
+
+    with open(f"data/{filename.lower()}.json", "w") as file:
         json.dump(newData, file)
+
+def checkPosition(username):
+    global position
+    score = json.load(open(f"data/{username.lower()}.json"))["score"]
+    files = os.listdir("data")
+
+    if score == 0:
+        position = len(files)
+        saveData(filename=username)
+
+    scores = {}
+    for filename in files:
+        scores[filename] = json.load(open(f"data/{filename}"))["score"]
+
+    sortedScoresList = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    sortedScores = {}
+    for sortedScore in sortedScoresList:
+        sortedScores[sortedScore[0]] = sortedScore[1]
+    sortedScoresKeyList = list(sortedScores.keys())
+    print(sortedScoresKeyList)
+
+    for filename, score in sortedScores.items():
+        positionInFile = json.load(open(f"data/{filename}"))["position"]
+        if positionInFile != (sortedScoresKeyList.index(filename)+1):
+            saveData(filename=(filename.replace(".json", "")), newPosition=(sortedScoresKeyList.index(filename)+1))
 
 async def translateText(text):
     result = await translator.translate(text, dest=languageLearning, src="en")
@@ -96,6 +144,8 @@ class App(ctk.CTk):
         self.rowconfigure(0, weight=1, uniform="a")
         self.rowconfigure(1, weight=5, uniform="a")
 
+        global username
+
         loadWords()
 
         self.detailsFrame = detailsFrame(self)
@@ -105,12 +155,16 @@ class App(ctk.CTk):
 
         self.mainloop()
 
-    def getUser(self, username="", *args):
+    def getUser(self, name="", *args):
+        global username
+
         hasFile = False
-        if username == "":
+        if name == "":
             self.username = self.loginFrame.nameEntry.get()
         else:
-            self.username = username
+            self.username = name
+
+        username = self.username
 
         for filename in os.listdir("data"):
             if filename == self.username + ".json":
@@ -118,33 +172,8 @@ class App(ctk.CTk):
 
         if hasFile:
             loadData(self.username)
-
-            languageLearningFormatted = ""
-            for key, language in languageKeys.items():
-                if languageLearning == key:
-                    languageLearningFormatted = language.capitalize()
-
-            positionFormatted = str(position)
-            positionLastDigit = position % 10
-
-            if position == 11 or position == 12 or position == 13:
-                positionFormatted += "th"
-            elif positionLastDigit == 1:
-                positionFormatted += "st"
-            elif positionLastDigit == 2:
-                positionFormatted += "nd"
-            elif positionFormatted == 3:
-                positionFormatted += "rd"
-            else:
-                positionFormatted += "th"
-            positionFormatted += " Place"
-
-            self.detailsFrame.languageLabel.configure(text=languageLearningFormatted)
-            self.detailsFrame.difficultyLabel.configure(text=difficulty.capitalize()) #NOT GETTING CORRECT VALUE
-            self.detailsFrame.usernameLabel.configure(text=self.username.capitalize())
-            self.detailsFrame.scoreLabel.configure(text=f"{score} Words Mastered")
-            self.detailsFrame.positionLabel.configure(text=positionFormatted)
-
+            self.updateUI()
+            
             self.loginFrame.destroy()
             self.vocabularyWordFrame = vocabularyWordFrame(self)
         else:
@@ -160,8 +189,43 @@ class App(ctk.CTk):
                 if language == languageInput:
                     languageCode = key
 
-        saveData(self.username, languageCode, True)
-        self.getUser(username=self.username)
+        saveData(filename=self.username, newLanguage=languageCode, create=True)
+        self.getUser(name=self.username)
+
+    def updateUI(self):
+        checkPosition(self.username)
+
+        languageLearningFormatted = ""
+        for key, language in languageKeys.items():
+            if languageLearning == key:
+                languageLearningFormatted = language.capitalize()
+
+        
+        scoreFormatted = str(score)
+        if score == 1:
+            scoreFormatted += " Word Mastered"
+        else:
+            scoreFormatted += " Words Mastered"
+
+        positionFormatted = str(position)
+        positionLastDigit = position % 10
+        if position == 11 or position == 12 or position == 13:
+            positionFormatted += "th"
+        elif positionLastDigit == 1:
+            positionFormatted += "st"
+        elif positionLastDigit == 2:
+            positionFormatted += "nd"
+        elif positionFormatted == 3:
+            positionFormatted += "rd"
+        else:
+            positionFormatted += "th"
+        positionFormatted += " Place"
+
+        self.detailsFrame.languageLabel.configure(text=languageLearningFormatted)
+        self.detailsFrame.difficultyLabel.configure(text=difficulty.capitalize())
+        self.detailsFrame.usernameLabel.configure(text=self.username.capitalize())
+        self.detailsFrame.scoreLabel.configure(text=scoreFormatted)
+        self.detailsFrame.positionLabel.configure(text=positionFormatted)
 
     def getWord(word):
         text = input()
@@ -205,7 +269,7 @@ class loginFrame(ctk.CTkFrame):
         self.nameLabel = ctk.CTkLabel(self, text="Enter Your Username:\n(a new one will be created if one does not exist)", font=ctk.CTkFont(family="Futura", size=20))
         self.nameLabel.grid(row=1, column=0, sticky="nsew", padx=350, pady=10)
 
-        self.nameEntry = ctk.CTkEntry(self, corner_radius=10, fg_color="#333333", border_color="#555555", border_width=2, font=ctk.CTkFont(family="Futura", size=20))
+        self.nameEntry = ctk.CTkEntry(self, corner_radius=10, fg_color="#333333", border_width=0, font=ctk.CTkFont(family="Futura", size=20))
         self.nameEntry.grid(row=2, column=0, sticky="nsew", padx=350, pady=10)
 
         languageKeysList = list(languageKeys.values())
@@ -215,13 +279,18 @@ class loginFrame(ctk.CTkFrame):
         self.languageDropdown = ctk.CTkOptionMenu(self, values=languageKeysList, corner_radius=10, fg_color="#333333", button_color="#333333", button_hover_color="#333333", font=ctk.CTkFont(family="Futura", size=20))
         self.languageDropdown
 
-        self.submitButton = ctk.CTkButton(self, text="Submit", corner_radius=10, border_color="#555555", border_width=2, font=ctk.CTkFont(family="Futura", size=20))
+        self.submitButton = ctk.CTkButton(self, text="Submit", corner_radius=10, font=ctk.CTkFont(family="Futura", size=20))
         self.submitButton.grid(row=3, column=0, sticky="nsew", padx=350, pady=10)
 
 class vocabularyWordFrame(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="#1E3E62", corner_radius=30)
         self.grid(row=1, column=0, sticky="nsew", padx=120, pady=30)
+
+        self.columnconfigure(0, weight=1, uniform="d")
+        self.columnconfigure(1, weight=3, uniform="d")
+        self.columnconfigure(2, weight=1, uniform="d")
+        self.rowconfigure((0, 1, 2, 3, 4), weight=1, uniform="d")
 
 class practiceWordFrame(ctk.CTkFrame):
     def __init__(self, parent):
