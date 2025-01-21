@@ -435,7 +435,7 @@ class loginFrame(ctk.CTkFrame):
             fg_color="#333333", 
             button_color="#333333", 
             button_hover_color="#333333",
-            ont=ctk.CTkFont(family="Futura", size=20))
+            font=ctk.CTkFont(family="Futura", size=20))
 
         self.submitButton = ctk.CTkButton(self, text="Submit", corner_radius=10, font=ctk.CTkFont(family="Futura", size=20))
         self.submitButton.grid(row=3, column=0, sticky="nsew", padx=350, pady=10)
