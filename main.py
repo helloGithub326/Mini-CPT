@@ -1,11 +1,9 @@
-#CHECK WHETHER LIST EXPLAINATION IS GOOD (USE SAMPLE A AS GUIDE)
-#ADD INPUT FOR GETTING THE LANGUAGE THE USER IS GOING TO LEARN WHEN USER FILE IS CREATED
-
 import os
 import asyncio
 from googletrans import Translator
 import customtkinter as ctk
 import json
+import random
 
 translator = Translator()
 
@@ -22,7 +20,7 @@ def loadWords():
     mediumWords = words["medium"]
     hardWords = words["hard"]
 
-def loadData(username):
+def loadData(name):
     global languageLearning
     global difficulty
     global score
@@ -31,7 +29,7 @@ def loadData(username):
     global learnedWords
     global masteredWords
 
-    data = json.load(open(f"data/{username.lower()}.json"))
+    data = json.load(open(f"data/{name.lower().replace(" ", "_")}.json"))
 
     languageLearning = data["languageLearning"]
     difficulty = data["difficulty"]
@@ -41,7 +39,7 @@ def loadData(username):
     learnedWords = data["learnedWords"]
     masteredWords = data["masteredWords"]
 
-def saveData(filename, newLanguage="", newDifficulty="", newScore=0, newPosition=0, newSeenWords=[], newLearnedWords=[], newMasteredWords=[], create=False):
+def saveData(name, newLanguage="", newDifficulty="", newScore=0, newPosition=0, newSeenWords={}, newLearnedWords={}, newMasteredWords={}, create=False):
     global username
     global languageLearning
     global difficulty
@@ -52,26 +50,30 @@ def saveData(filename, newLanguage="", newDifficulty="", newScore=0, newPosition
     global masteredWords
     
     if create:
-        languageLearning = newLanguage
-        difficulty = "easy"
-        score = 0
-        position = 0
-        seenWords = []
-        learnedWords = []
-        masteredWords = []
+        newData = {
+            "name": name,
+            "languageLearning": newLanguage,
+            "difficulty": "easy",
+            "score": 0,
+            "position": 0,
+            "seenWords": {},
+            "learnedWords": {},
+            "masteredWords": {}
+        }
 
-    data = json.load(open(f"data/{filename.lower()}.json"))        
+    if not create:
+        data = json.load(open(f"data/{name.lower().replace(" ", "_")}.json"))        
 
-    newData = {
-        "name": filename,
-        "languageLearning": data["languageLearning"],
-        "difficulty": data["difficulty"],
-        "score": data["score"],
-        "position": data["position"],
-        "seenWords": data["seenWords"],
-        "learnedWords": data["learnedWords"],
-        "masteredWords": data["masteredWords"]
-    }
+        newData = {
+            "name": name,
+            "languageLearning": data["languageLearning"],
+            "difficulty": data["difficulty"],
+            "score": data["score"],
+            "position": data["position"],
+            "seenWords": data["seenWords"],
+            "learnedWords": data["learnedWords"],
+            "masteredWords": data["masteredWords"]
+        }
 
     if newDifficulty != "":
         newData["difficulty"] = newDifficulty
@@ -79,14 +81,14 @@ def saveData(filename, newLanguage="", newDifficulty="", newScore=0, newPosition
         newData["score"] = newScore
     if newPosition != 0:
         newData["position"] = newPosition
-    if newSeenWords != []:
+    if newSeenWords != {}:
         newData["seenWords"] = newSeenWords
-    if newLearnedWords != []:
+    if newLearnedWords != {}:
         newData["learnedWords"] = newLearnedWords
-    if newMasteredWords != []:
+    if newMasteredWords != {}:
         newData["masteredWords"] = newMasteredWords
 
-    if filename == username:
+    if name == username:
         languageLearning = newData["languageLearning"]
         difficulty = newData["difficulty"]
         score = newData["score"]
@@ -95,17 +97,17 @@ def saveData(filename, newLanguage="", newDifficulty="", newScore=0, newPosition
         learnedWords = newData["learnedWords"]
         masteredWords = newData["masteredWords"]
 
-    with open(f"data/{filename.lower()}.json", "w") as file:
+    with open(f"data/{name.lower().replace(" ", "_")}.json", "w") as file:
         json.dump(newData, file)
 
 def checkPosition(username):
     global position
-    score = json.load(open(f"data/{username.lower()}.json"))["score"]
+    global score
     files = os.listdir("data")
 
     if score == 0:
         position = len(files)
-        saveData(filename=username)
+        saveData(name=username, newPosition=position)
 
     scores = {}
     for filename in files:
@@ -116,26 +118,30 @@ def checkPosition(username):
     for sortedScore in sortedScoresList:
         sortedScores[sortedScore[0]] = sortedScore[1]
     sortedScoresKeyList = list(sortedScores.keys())
-    print(sortedScoresKeyList)
 
     for filename, score in sortedScores.items():
         positionInFile = json.load(open(f"data/{filename}"))["position"]
         if positionInFile != (sortedScoresKeyList.index(filename)+1):
-            saveData(filename=(filename.replace(".json", "")), newPosition=(sortedScoresKeyList.index(filename)+1))
+            saveData(name=(filename.replace(".json", "")), newPosition=(sortedScoresKeyList.index(filename)+1))
 
-async def translateText(text):
-    result = await translator.translate(text, dest=languageLearning, src="en")
-    #translatedWord = result.extra_data["translation"][0][0]
-    translatedWord = result.extra_data["all-translations"][0][1][0]
-    wordDefinition = result.extra_data["definitions"][0][1][0][0]
-    similarWords = result.extra_data["all-translations"][0][1][1:]
-    
-    return translatedWord, wordDefinition, similarWords
+async def translateList(list):
+    translatedWords = {}
+    translations = await translator.translate([word for word in list], dest=languageLearning, src="en")
+    for index, translation in enumerate(translations):
+        translatedWord = translation.extra_data["translation"][0][0]
+        wordDefinition = translation.extra_data["definitions"][0][1][0][0]
+        try:
+            similarWords = translation.extra_data["all-translations"][0][1][1:]
+        except:
+            similarWords = []
+        
+        translatedWords[list[index]] = {"translated": translatedWord, "definition": wordDefinition, "similar": similarWords}
+    return translatedWords
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__(fg_color="#0B192C")
-        self.title("Vocabulary") #CHANGE NAME
+        self.title("V-Lang: Unlock the Power of a Language, One Word at a Time!")
         self.geometry("1200x600")
         self.minsize(800, 400)
         self.after(0, lambda:self.state("zoomed"))
@@ -160,14 +166,15 @@ class App(ctk.CTk):
 
         hasFile = False
         if name == "":
-            self.username = self.loginFrame.nameEntry.get()
+            if self.loginFrame.nameEntry.get():
+                self.username = self.loginFrame.nameEntry.get()
         else:
             self.username = name
 
         username = self.username
 
         for filename in os.listdir("data"):
-            if filename == self.username + ".json":
+            if filename == self.username.lower().replace(" ", "_") + ".json":
                 hasFile = True
 
         if hasFile:
@@ -175,6 +182,24 @@ class App(ctk.CTk):
             self.updateUI()
             
             self.loginFrame.destroy()
+
+            allWords = easyWords + mediumWords + hardWords
+            allWordsTranslated = asyncio.run(translateList(allWords))
+            
+            self.easyWordsTranslated = {}
+            self.mediumWordsTranslated = {}
+            self.hardWordsTranslated = {}
+
+            index = 0
+            for word in allWordsTranslated:
+                if index <= (len(easyWords) - 1):
+                    self.easyWordsTranslated[word] = {"translated": allWordsTranslated[word]["translated"], "definition": allWordsTranslated[word]["definition"], "similar": allWordsTranslated[word]["similar"]}
+                elif index <= (((len(easyWords) + len(mediumWords))) - 1):
+                    self.mediumWordsTranslated[word] = {"translated": allWordsTranslated[word]["translated"], "definition": allWordsTranslated[word]["definition"], "similar": allWordsTranslated[word]["similar"]}
+                elif index <= (((len(easyWords) + len(mediumWords) + len(hardWords))) - 1):
+                    self.hardWordsTranslated[word] = {"translated": allWordsTranslated[word]["translated"], "definition": allWordsTranslated[word]["definition"], "similar": allWordsTranslated[word]["similar"]}
+                index += 1
+
             self.vocabularyWordFrame = vocabularyWordFrame(self)
         else:
             self.loginFrame.nameLabel.configure(text="Choose The Language You Want to Learn:")
@@ -189,7 +214,7 @@ class App(ctk.CTk):
                 if language == languageInput:
                     languageCode = key
 
-        saveData(filename=self.username, newLanguage=languageCode, create=True)
+        saveData(name=self.username, newLanguage=languageCode, create=True)
         self.getUser(name=self.username)
 
     def updateUI(self):
@@ -226,12 +251,19 @@ class App(ctk.CTk):
         self.detailsFrame.usernameLabel.configure(text=self.username.capitalize())
         self.detailsFrame.scoreLabel.configure(text=scoreFormatted)
         self.detailsFrame.positionLabel.configure(text=positionFormatted)
+    
+    def openPractice(self):
+        global seenWords
 
-    def getWord(word):
-        text = input()
-        translatedWord, wordDefinition, similarWords = asyncio.run(translateText(text))
-
-        seenWords[translatedWord] = {"word": translatedWord, "def": wordDefinition, "similar": similarWords}
+        if not (self.vocabularyWordFrame.currentWord in list(seenWords.keys())):
+            seenWords[self.vocabularyWordFrame.currentWord] = {"translated": self.vocabularyWordFrame.translatedWord, "definition": self.vocabularyWordFrame.wordDefinition, "similar": self.vocabularyWordFrame.similarWords}
+        
+        self.practiceWordFrame = practiceWordFrame(self, self.updateUI)
+        self.vocabularyWordFrame.destroy()
+    
+    def openLearn(self):
+        self.vocabularyWordFrame = vocabularyWordFrame(self)
+        self.practiceWordFrame.destroy()
 
 class detailsFrame(ctk.CTkFrame):
     def __init__(self, parent):
@@ -243,20 +275,20 @@ class detailsFrame(ctk.CTkFrame):
         self.columnconfigure(2, weight=1, uniform="b")
         self.rowconfigure((0, 1, 2, 3), weight=1, uniform="b")
 
-        self.languageLabel = ctk.CTkLabel(self, text="Vocabulary", font=ctk.CTkFont(family="Futura", size=52), anchor="s")
+        self.languageLabel = ctk.CTkLabel(self, text="V-Lang", font=ctk.CTkFont(family="Futura", size=52), anchor="s")
         self.languageLabel.grid(row=0, column=1, rowspan=3, sticky="nsew", pady=5)
 
-        self.difficultyLabel = ctk.CTkLabel(self, text="Difficulty", font=ctk.CTkFont(family="Futura", size=18), anchor="n")
+        self.difficultyLabel = ctk.CTkLabel(self, text="Unlock the Power of a Language, One Word at a Time!", font=ctk.CTkFont(family="Futura", size=18), anchor="n")
         self.difficultyLabel.grid(row=3, column=1, sticky="nsew", pady=5)
 
         self.usernameLabel = ctk.CTkLabel(self, text="Username", font=ctk.CTkFont(family="Futura", size=18), anchor="se")
-        self.usernameLabel.grid(row=0, column=2, rowspan=2, sticky="nsew", padx=10, pady=10)
+        self.usernameLabel.grid(row=0, column=2, rowspan=2, sticky="nsew", padx=20, pady=10)
 
         self.scoreLabel = ctk.CTkLabel(self, text="0 Words Mastered", font=ctk.CTkFont(family="Futura", size=18), anchor="sw")
-        self.scoreLabel.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
+        self.scoreLabel.grid(row=0, column=0, rowspan=2, sticky="nsew", padx=20, pady=10)
 
         self.positionLabel = ctk.CTkLabel(self, text="0th Place", font=ctk.CTkFont(family="Futura", size=18), anchor="nw")
-        self.positionLabel.grid(row=2, column=0, rowspan=2, sticky="nsew", padx=10, pady=10)
+        self.positionLabel.grid(row=2, column=0, rowspan=2, sticky="nsew", padx=20, pady=10)
 
 class loginFrame(ctk.CTkFrame):
     def __init__(self, parent):
@@ -266,7 +298,7 @@ class loginFrame(ctk.CTkFrame):
         self.columnconfigure(0, weight=1, uniform="c")
         self.rowconfigure((0, 1, 2, 3, 4), weight=1, uniform="c")
 
-        self.nameLabel = ctk.CTkLabel(self, text="Enter Your Username:\n(a new one will be created if one does not exist)", font=ctk.CTkFont(family="Futura", size=20))
+        self.nameLabel = ctk.CTkLabel(self, text="Enter Your Username:\n(new data will be created if data does not already exist)", font=ctk.CTkFont(family="Futura", size=20))
         self.nameLabel.grid(row=1, column=0, sticky="nsew", padx=350, pady=10)
 
         self.nameEntry = ctk.CTkEntry(self, corner_radius=10, fg_color="#333333", border_width=0, font=ctk.CTkFont(family="Futura", size=20))
@@ -288,13 +320,365 @@ class vocabularyWordFrame(ctk.CTkFrame):
         self.grid(row=1, column=0, sticky="nsew", padx=120, pady=30)
 
         self.columnconfigure(0, weight=1, uniform="d")
-        self.columnconfigure(1, weight=3, uniform="d")
+        self.columnconfigure(1, weight=8, uniform="d")
         self.columnconfigure(2, weight=1, uniform="d")
-        self.rowconfigure((0, 1, 2, 3, 4), weight=1, uniform="d")
+        self.rowconfigure(0, weight=2, uniform="d")
+        self.rowconfigure(1, weight=3, uniform="d")
+        self.rowconfigure(2, weight=1, uniform="d")
+        self.rowconfigure(3, weight=3, uniform="d")
+        self.rowconfigure(4, weight=2, uniform="d")
+
+        global difficulty
+        global seenWords
+
+        self.easyWordsTranslated = parent.easyWordsTranslated
+        self.mediumWordsTranslated = parent.mediumWordsTranslated
+        self.hardWordsTranslated = parent.hardWordsTranslated
+
+        if difficulty == "easy":
+            self.wordList = easyWords
+            self.wordDict = self.easyWordsTranslated
+        elif difficulty == "medium":
+            self.wordList = mediumWords
+            self.wordDict = self.mediumWordsTranslated
+        elif difficulty == "hard":
+            self.wordList = hardWords
+            self.wordDict = self.hardWordsTranslated
+
+        self.currentWords = []
+        self.translatedWord = ""
+        self.currentWord = ""
+        self.wordDefinition = ""
+        self.similarWords = ""
+        
+        if difficulty != "viewed":
+            self.newWord()
+
+        self.wordLabel = ctk.CTkLabel(self, text=self.translatedWord, font=ctk.CTkFont(family="Futura", size=42), anchor="s")
+        self.wordLabel.grid(row=1, column=1, sticky="nsew", padx=10, pady=5)
+
+        self.originalWordLabel = ctk.CTkLabel(self, text=f"({self.currentWord})", font=ctk.CTkFont(family="Futura", size=16), anchor="n")
+        self.originalWordLabel.grid(row=2, column=1, sticky="nsew", padx=10, pady=5)
+
+        self.defLabel = ctk.CTkLabel(self, text=self.wordDefinition, font=ctk.CTkFont(family="Futura", size=20), anchor="n")
+        self.defLabel.grid(row=3, column=1, sticky="nsew", pady=5)
+
+        self.similarWordsLabel = ctk.CTkLabel(self, text=self.similarWords, font=ctk.CTkFont(family="Futura", size=18))
+        self.similarWordsLabel.grid(row=4, column=1, sticky="nsew", pady=5)
+
+        self.nextButton = ctk.CTkButton(self, text=">", corner_radius=50, command=self.nextWord, font=ctk.CTkFont(family="Futura", size=20))
+        self.nextButton.grid(row=0, column=2, sticky="nes", padx=25, pady=25)
+        
+        self.previousButton = ctk.CTkButton(self, text="<", corner_radius=50, command=self.previousWord, font=ctk.CTkFont(family="Futura", size=20))
+        self.previousButton.grid(row=0, column=0, sticky="nsw", padx=25, pady=25)
+
+        self.practiceButton = ctk.CTkButton(self, text="Practice", corner_radius=50, command=parent.openPractice, font=ctk.CTkFont(family="Futura", size=20))
+        self.practiceButton.grid(row=0, column=1, sticky="nsew", padx=425, pady=25)
+
+        if difficulty == "viewed":
+            self.wordLabel.configure(text="YOU HAVE SEEN ALL THE WORDS!\nPRACTICE THEM TO REMEMBER THEM!")
+            self.originalWordLabel.configure(text="")
+            self.defLabel.configure(text="")
+            self.similarWordsLabel.configure(text="")
+    
+    def newWord(self):
+        global seenWords
+        global difficulty
+
+        try:
+            repeat = True
+            iterations = 0
+            while repeat:
+                if iterations == (len(self.wordList) - 1):
+                    self.changeDifficulty()
+                    if difficulty == "viewed":
+                        repeat = False
+                self.currentWord = random.choice(self.wordList)
+                repeat = False
+                if self.currentWord in list(seenWords.keys()):
+                    repeat = True
+                iterations += 1
+            
+            if difficulty == "viewed":
+                self.wordLabel.configure(text="YOU HAVE SEEN ALL THE WORDS!\nPRACTICE THEM TO REMEMBER THEM!")
+                self.originalWordLabel.configure(text="")
+                self.defLabel.configure(text="")
+                self.similarWordsLabel.configure(text="")
+            elif difficulty != "viewed":
+                self.translatedWord = self.wordDict[self.currentWord]["translated"]
+                self.wordDefinition = self.wordDict[self.currentWord]["definition"]
+                self.similarWords = self.wordDict[self.currentWord]["similar"]
+
+                defList = self.wordDefinition.replace(" ", " -")
+                defList = defList.split("-")
+
+                length = 0
+                for index, word in enumerate(defList):
+                    length += len(word)
+                    if length >= 50:
+                        defList.insert(index, "\n")
+                        length -= 50
+                
+                defStr = ""
+                for word in defList:
+                    defStr += word
+                
+                defStr = defStr.rstrip(".")
+                self.wordDefinition = defStr
+
+                similarWordsList = self.similarWords
+                length = 0
+                for index, word in enumerate(similarWordsList):
+                    length += len(word)
+                    if length >= 75:
+                        similarWordsList.insert(index, "\n")
+                        length -= 75
+
+                similarWordsStr = "Similar Words:\n"
+                previousWord = ""
+                for index, word in enumerate(similarWordsList):
+                    if index == 0 or previousWord == "\n":
+                        similarWordsStr += word
+                    else:
+                        similarWordsStr += f", {word}"
+                    previousWord = word
+                self.similarWords = similarWordsStr
+        except Exception as e:
+            self.newWord()
+
+    def updateWord(self, word=""):
+        global username
+        global seenWords
+
+        if word != "":
+            wordData = seenWords[word]
+
+            self.translatedWord = wordData["translated"]
+            self.currentWord = self.currentWords[self.currentWords.index(word)]
+            self.wordDefinition = wordData["definition"]
+            self.similarWords = wordData["similar"]
+        
+        self.wordLabel.configure(text=self.translatedWord)
+        self.originalWordLabel.configure(text=f"({self.currentWord})")
+        self.defLabel.configure(text=self.wordDefinition)
+        self.similarWordsLabel.configure(text=self.similarWords)
+
+        saveData(name=username, newSeenWords=seenWords)
+
+    def nextWord(self):
+        global seenWords
+        global difficulty
+
+        if not(self.currentWord in self.currentWords):
+            self.currentWords.append(self.currentWord)
+        currentWordIndex = self.currentWords.index(self.currentWord)
+        if currentWordIndex == (len(self.currentWords)-1):
+            seenWords[self.currentWord] = {"translated": self.translatedWord, "definition": self.wordDefinition, "similar": self.similarWords}
+            self.newWord()
+            if difficulty != "viewed":
+                self.updateWord()
+        else:
+            self.updateWord(self.currentWords[currentWordIndex+1])
+
+    def previousWord(self):
+        global seenWords
+
+        self.currentWords.append(self.currentWord)
+        currentWordIndex = self.currentWords.index(self.currentWord)
+        if currentWordIndex == (len(self.currentWords)-1):
+            seenWords[self.currentWord] = {"translated": self.translatedWord, "definition": self.wordDefinition, "similar": self.similarWords}
+            self.updateWord(self.currentWords[currentWordIndex-1])
+        elif currentWordIndex != 0:
+            self.currentWords.pop()
+            self.updateWord(self.currentWords[currentWordIndex-1])
+        else:
+            self.currentWords.pop()
+
+    def changeDifficulty(self):
+        global username
+        global difficulty
+
+        if difficulty == "easy":
+            difficulty = "medium"
+            self.wordList = mediumWords
+            self.wordDict = self.mediumWordsTranslated
+        elif difficulty == "medium":
+            difficulty = "hard"
+            self.wordList = hardWords
+            self.wordDict = self.hardWordsTranslated
+        elif difficulty == "hard":
+            difficulty = "viewed"
+            self.wordLabel.configure(text="YOU HAVE SEEN ALL THE WORDS!\nPRACTICE THEM TO REMEMBER THEM!")
+            self.originalWordLabel.configure(text="")
+            self.defLabel.configure(text="")
+            self.similarWordsLabel.configure(text="")
+        else:
+            self.wordLabel.configure(text="YOU HAVE SEEN ALL THE WORDS!\nPRACTICE THEM TO REMEMBER THEM!")
+            self.originalWordLabel.configure(text="")
+            self.defLabel.configure(text="")
+            self.similarWordsLabel.configure(text="")   
+
+        saveData(name=username, newDifficulty=difficulty)
 
 class practiceWordFrame(ctk.CTkFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, updateUI):
         super().__init__(parent, fg_color="#1E3E62", corner_radius=30)
         self.grid(row=1, column=0, sticky="nsew", padx=120, pady=30)
+
+        self.columnconfigure(0, weight=1, uniform="e")
+        self.columnconfigure(1, weight=2, uniform="e")
+        self.columnconfigure(2, weight=2, uniform="e")
+        self.columnconfigure(3, weight=2, uniform="e")
+        self.columnconfigure(4, weight=2, uniform="e")
+        self.columnconfigure(5, weight=1, uniform="e")
+        self.rowconfigure(0, weight=2, uniform="e")
+        self.rowconfigure(1, weight=3, uniform="e")
+        self.rowconfigure(2, weight=1, uniform="e")
+        self.rowconfigure(3, weight=3, uniform="e")
+        self.rowconfigure(4, weight=2, uniform="e")
+
+        self.updateUI = updateUI
+
+        self.wordDefinition = ""
+        self.option1Word = ""
+        self.option2Word = ""
+        self.option3Word = ""
+        self.option4Word = ""
+        self.correctAnswer = ""
+        self.correctAnswerTranslated = ""
+
+        self.defLabel = ctk.CTkLabel(self, text=self.wordDefinition, font=ctk.CTkFont(family="Futura", size=32), anchor="s")
+        self.defLabel.grid(row=1, column=1, columnspan=4, sticky="nsew", padx=10, pady=5)
+
+        self.option1Button = ctk.CTkButton(self, text=self.option1Word, corner_radius=50, command=self.chooseOption1, font=ctk.CTkFont(family="Futura", size=20))
+        self.option1Button.grid(row=3, column=1, sticky="nsew", padx=25, pady=25)
+
+        self.option2Button = ctk.CTkButton(self, text=self.option2Word, corner_radius=50, command=self.chooseOption2, font=ctk.CTkFont(family="Futura", size=20))
+        self.option2Button.grid(row=3, column=2, sticky="nsew", padx=25, pady=25)
+
+        self.option3Button = ctk.CTkButton(self, text=self.option3Word, corner_radius=50, command=self.chooseOption3, font=ctk.CTkFont(family="Futura", size=20))
+        self.option3Button.grid(row=3, column=3, sticky="nsew", padx=25, pady=25)
+
+        self.option4Button = ctk.CTkButton(self, text=self.option4Word, corner_radius=50, command=self.chooseOption4, font=ctk.CTkFont(family="Futura", size=20))
+        self.option4Button.grid(row=3, column=4, sticky="nsew", padx=25, pady=25)
+
+        self.backButton = ctk.CTkButton(self, text="Learn", corner_radius=50, command=parent.openLearn, font=ctk.CTkFont(family="Futura", size=20))
+        self.backButton.grid(row=0, column=1, columnspan=4, sticky="nsew", padx=450, pady=25)
+
+        self.newQuestion()
+
+    def newQuestion(self):
+        global seenWords
+        global learnedWords
+        global masteredWords
+
+        possibleWords = {}
+        for word in list(seenWords.keys()):
+            if (not (word in list(learnedWords.keys()))) or (not (word in list(masteredWords.keys()))):
+                possibleWords[word] = seenWords[word]
+
+        if len(possibleWords) > 0:
+            randomWord = random.choice(list(possibleWords.keys()))
+            self.correctAnswer = randomWord
+            self.correctAnswerTranslated = (possibleWords[randomWord]["translated"]).capitalize()
+
+            options = []
+
+            if len(masteredWords) >= 10:
+                options.append((seenWords[random.choice(list(masteredWords.keys()))]["translated"]).capitalize())
+            if len(learnedWords) >= 3:
+                options.append((seenWords[random.choice(list(learnedWords.keys()))]["translated"]).capitalize())
+            if len(seenWords) >= 3:
+                if len(options) == 0:
+                    options.append((seenWords[random.choice(list(seenWords.keys()))]["translated"]).capitalize())
+                    options.append((seenWords[random.choice(list(seenWords.keys()))]["translated"]).capitalize())
+                    options.append((seenWords[random.choice(list(seenWords.keys()))]["translated"]).capitalize())
+                elif len(options) == 1:
+                    options.append((seenWords[random.choice(list(seenWords.keys()))]["translated"]).capitalize())
+                    options.append((seenWords[random.choice(list(seenWords.keys()))]["translated"]).capitalize())
+                elif len(options) == 2:
+                    options.append((seenWords[random.choice(list(seenWords.keys()))]["translated"]).capitalize())
+            else:
+                options.append((possibleWords[randomWord]["translated"]).capitalize())
+                options.append((possibleWords[randomWord]["translated"]).capitalize())
+                options.append((possibleWords[randomWord]["translated"]).capitalize())
+
+            options.append((possibleWords[randomWord]["translated"]).capitalize())
+
+            self.updateQuestion(possibleWords[randomWord]["definition"], options)
+        else:
+            options = ["", "", "", ""]
+            self.updateQuestion("YOU HAVE MASTERED ALL THE WORDS THAT YOU HAVE LEARNED!\nGO BACK AND LEARN MORE WORDS!", options)
+
+    def updateQuestion(self, definition, options):
+        self.wordDefinition = definition
+        self.option1Word = random.choice(options)
+        options.remove(self.option1Word)
+        self.option2Word = random.choice(options)
+        options.remove(self.option2Word)
+        self.option3Word = random.choice(options)
+        options.remove(self.option3Word)
+        self.option4Word = random.choice(options)
+        options.remove(self.option4Word)
+
+        self.defLabel.configure(text=self.wordDefinition, text_color="#ffffff")
+        self.option1Button.configure(text=self.option1Word)
+        self.option2Button.configure(text=self.option2Word)
+        self.option3Button.configure(text=self.option3Word)
+        self.option4Button.configure(text=self.option4Word)
+        
+    def chooseOption1(self):
+        if self.option1Word == self.correctAnswerTranslated:
+            self.choseCorrectAnswer()
+        else:
+            self.choseIncorrectAnswer()
+
+    def chooseOption2(self):
+        if self.option2Word == self.correctAnswerTranslated:
+            self.choseCorrectAnswer()
+        else:
+            self.choseIncorrectAnswer()
+
+    def chooseOption3(self):
+        if self.option3Word == self.correctAnswerTranslated:
+            self.choseCorrectAnswer()
+        else:
+            self.choseIncorrectAnswer()
+
+    def chooseOption4(self):
+        if self.option4Word == self.correctAnswerTranslated:
+            self.choseCorrectAnswer()
+        else:
+            self.choseIncorrectAnswer()
+
+    def choseCorrectAnswer(self):
+        global seenWords
+        global learnedWords
+        global masteredWords
+        global score
+
+        if self.correctAnswer in list(learnedWords.keys()):
+            masteredWords[self.correctAnswer] = {"translated": learnedWords[self.correctAnswer]["translated"], "definition": learnedWords[self.correctAnswer]["definition"], "similar": learnedWords[self.correctAnswer]["similar"]}
+            score += 1
+        else:
+            learnedWords[self.correctAnswer] = {"translated": seenWords[self.correctAnswer]["translated"], "definition": seenWords[self.correctAnswer]["definition"], "similar": seenWords[self.correctAnswer]["similar"]}
+
+        self.defLabel.configure(text="CORRECT!", text_color="#07d400")
+
+        saveData(name=username, newLearnedWords=learnedWords, newMasteredWords=masteredWords, newScore=score)
+        checkPosition(username=username)
+        self.updateUI()
+        self.after(3000, self.newQuestion)
+
+    def choseIncorrectAnswer(self):
+        global learnedWords
+
+        if self.correctAnswer in list(learnedWords.keys()):
+            learnedWords.pop(self.correctAnswer)
+
+        self.defLabel.configure(text=f"INCORRECT! Correct Answer Was {self.correctAnswerTranslated}", text_color="#d11002")
+
+        saveData(name=username, newLearnedWords=learnedWords)
+        self.after(3000, self.newQuestion)
 
 App()
