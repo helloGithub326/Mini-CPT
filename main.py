@@ -1,3 +1,5 @@
+# Install os, asyncio, googletrans, customtkinter, json, and random before running the program
+
 import os
 import asyncio
 from googletrans import Translator
@@ -299,7 +301,7 @@ class loginFrame(ctk.CTkFrame):
         self.rowconfigure((0, 1, 2, 3, 4), weight=1, uniform="c")
 
         self.nameLabel = ctk.CTkLabel(self, text="Enter Your Username:\n(new data will be created if data does not already exist)", font=ctk.CTkFont(family="Futura", size=20))
-        self.nameLabel.grid(row=1, column=0, sticky="nsew", padx=350, pady=10)
+        self.nameLabel.grid(row=1, column=0, sticky="nsew", padx=250, pady=10)
 
         self.nameEntry = ctk.CTkEntry(self, corner_radius=10, fg_color="#333333", border_width=0, font=ctk.CTkFont(family="Futura", size=20))
         self.nameEntry.grid(row=2, column=0, sticky="nsew", padx=350, pady=10)
@@ -373,7 +375,7 @@ class vocabularyWordFrame(ctk.CTkFrame):
         self.previousButton.grid(row=0, column=0, sticky="nsw", padx=25, pady=25)
 
         self.practiceButton = ctk.CTkButton(self, text="Practice", corner_radius=50, command=parent.openPractice, font=ctk.CTkFont(family="Futura", size=20))
-        self.practiceButton.grid(row=0, column=1, sticky="nsew", padx=425, pady=25)
+        self.practiceButton.grid(row=0, column=1, sticky="nsew", padx=300, pady=25)
 
         if difficulty == "viewed":
             self.wordLabel.configure(text="YOU HAVE SEEN ALL THE WORDS!\nPRACTICE THEM TO REMEMBER THEM!")
@@ -562,8 +564,8 @@ class practiceWordFrame(ctk.CTkFrame):
         self.option4Button = ctk.CTkButton(self, text=self.option4Word, corner_radius=50, command=self.chooseOption4, font=ctk.CTkFont(family="Futura", size=20))
         self.option4Button.grid(row=3, column=4, sticky="nsew", padx=25, pady=25)
 
-        self.backButton = ctk.CTkButton(self, text="Learn", corner_radius=50, command=parent.openLearn, font=ctk.CTkFont(family="Futura", size=20))
-        self.backButton.grid(row=0, column=1, columnspan=4, sticky="nsew", padx=450, pady=25)
+        self.learnButton = ctk.CTkButton(self, text="Learn", corner_radius=50, command=parent.openLearn, font=ctk.CTkFont(family="Futura", size=20))
+        self.learnButton.grid(row=0, column=1, columnspan=4, sticky="nsew", padx=300, pady=25)
 
         self.newQuestion()
 
