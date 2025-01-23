@@ -801,13 +801,16 @@ class practiceWordFrame(ctk.CTkFrame):
 
         possibleWords = {}
         for word in list(seenWords.keys()):
-            if (not (word in list(learnedWords.keys()))) or (not (word in list(masteredWords.keys()))):
+            inLearnedWords = word in list(learnedWords.keys())
+            inMasteredWords = word in list(masteredWords.keys())
+            if (not inLearnedWords) or (not inMasteredWords):
                 possibleWords[word] = seenWords[word]
 
         if len(possibleWords) > 0:
             randomWord = random.choice(list(possibleWords.keys()))
+            translated = (possibleWords[randomWord]["translated"])
             self.correctAnswer = randomWord
-            self.correctAnswerTranslated = (possibleWords[randomWord]["translated"]).capitalize()
+            self.correctAnswerTranslated = translated.capitalize()
 
             # Create a list called options that will store the answer choices for this question
             options = []
