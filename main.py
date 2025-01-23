@@ -157,7 +157,8 @@ def checkPosition(username):
     for filename, score in sortedScores.items():
         positionInFile = json.load(open(f"data/{filename}"))["position"]
         if positionInFile != (sortedScoresKeyList.index(filename)+1):
-            saveData(name=(filename.replace(".json", "")), newPosition=(sortedScoresKeyList.index(filename)+1))
+            saveData(name=(filename.replace(".json", "")), 
+                    newPosition=(sortedScoresKeyList.index(filename)+1))
 
 # Translate a list of words using the googletrans's Translator class that was stored as the translator variable 
 # and return a dictionary with the original word as the key and the translated word, definition, and similar words as the values
