@@ -134,35 +134,26 @@ def saveData(
     with open(f"data/{name.lower().replace(" ", "_")}.json", "w") as file:
         json.dump(newData, file)
 
-# Check if the user's position in the leaderboard has changed and if it has, update the values in all the files
 def checkPosition(username):
-    # Make variables global so that they can be accessed and modified from anywhere in the code
     global position
     global score
 
-    # Get a list of all the files in the data folder
     files = os.listdir("data")
 
-    # If the user's score is 0 (newly created file with the default value), set the position to the length of the files
     if score == 0:
         position = len(files)
         saveData(name=username, newPosition=position)
 
-    # Get a dictionary of all the scores of the files list with the filename as the key
     scores = {}
     for filename in files:
         scores[filename] = json.load(open(f"data/{filename}"))["score"]
 
-    # Sort the scores dictionary by the values in descending order by first converting it to a list to actually sort the values 
-    # and then reconverting it into a dictionary to know the filenames for each value in sortedScoresList
     sortedScoresList = sorted(scores.items(), key=lambda item: item[1], reverse=True)
     sortedScores = {}
     for sortedScore in sortedScoresList:
         sortedScores[sortedScore[0]] = sortedScore[1]
     sortedScoresKeyList = list(sortedScores.keys())
 
-    # For every filename in the sortedScores dictionary, check if the position in the file is the same as the position 
-    # in the sortedScoresKeyList and if it isn't, update the position in the file
     for filename, score in sortedScores.items():
         positionInFile = json.load(open(f"data/{filename}"))["position"]
         if positionInFile != (sortedScoresKeyList.index(filename)+1):
@@ -301,24 +292,20 @@ class App(ctk.CTk):
         saveData(name=self.username, newLanguage=languageCode, create=True)
         self.getUser(name=self.username)
 
-    # Update the UI with new values
     def updateUI(self):
         checkPosition(self.username)
 
-        # Format the languageLearning variable to be in full form instead of the language code and capitalize it
         languageLearningFormatted = ""
         for key, language in languageKeys.items():
             if languageLearning == key:
                 languageLearningFormatted = language.capitalize()
 
-        # Format the socre based on if the score is equal to one or not
         scoreFormatted = str(score)
         if score == 1:
             scoreFormatted += " Word Mastered"
         else:
             scoreFormatted += " Words Mastered"
 
-        # Position the format based on the ending digit of the position or the position itself
         positionFormatted = str(position)
         positionLastDigit = position % 10
         if position == 11 or position == 12 or position == 13:
@@ -333,7 +320,6 @@ class App(ctk.CTk):
             positionFormatted += "th"
         positionFormatted += " Place"
 
-        # Set the labels to the new values
         self.detailsFrame.languageLabel.configure(text=languageLearningFormatted)
         self.detailsFrame.difficultyLabel.configure(text=difficulty.capitalize())
         self.detailsFrame.usernameLabel.configure(text=self.username.capitalize())
@@ -812,15 +798,11 @@ class practiceWordFrame(ctk.CTkFrame):
         global learnedWords
         global masteredWords
 
-        # Create a dictionary of the words that the user hasn't learned or mastered yet by checking if they are not 
-        # in the learnedWords or masteredWords
         possibleWords = {}
         for word in list(seenWords.keys()):
             if (not (word in list(learnedWords.keys()))) or (not (word in list(masteredWords.keys()))):
                 possibleWords[word] = seenWords[word]
 
-        # If there is at least one word in the possibleWords dictionary, choose a random word from the dictionary 
-        # and set the correctAnswer and correctAnswerTranslated variables to the word's values
         if len(possibleWords) > 0:
             randomWord = random.choice(list(possibleWords.keys()))
             self.correctAnswer = randomWord
